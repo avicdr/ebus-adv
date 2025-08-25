@@ -1,0 +1,489 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Dashboard - eBus</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="dashboard">
+        <header class="dashboard-header">
+            <div class="nav-brand">
+                <i class="fas fa-bus"></i>
+                <span>eBus - User Dashboard</span>
+            </div>
+            <div class="dashboard-nav">
+                <a href="#" class="active" onclick="showSection('search')">
+                    <i class="fas fa-search"></i> Search Buses
+                </a>
+                <a href="#" onclick="showSection('bookings')">
+                    <i class="fas fa-ticket-alt"></i> My Bookings
+                </a>
+                <a href="#" onclick="showSection('profile')">
+                    <i class="fas fa-user"></i> Profile
+                </a>
+                <a href="#" onclick="logout()" style="color: var(--error);">
+                    <i class="fas fa-sign-out-alt"></i> Logout
+                </a>
+            </div>
+        </header>
+
+        <div class="dashboard-content">
+            <!-- Search Section -->
+            <div id="search-section" class="section">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Search Buses</h2>
+                    </div>
+                    
+                    <div class="grid grid-2">
+                        <div class="form-group">
+                            <label for="fromLocation">From</label>
+                            <input type="text" id="fromLocation" placeholder="Enter source location">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="toLocation">To</label>
+                            <input type="text" id="toLocation" placeholder="Enter destination">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="travelDate">Travel Date</label>
+                            <input type="date" id="travelDate">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="busType">Bus Type</label>
+                            <select id="busType">
+                                <option value="">All Types</option>
+                                <option value="AC">AC</option>
+                                <option value="Non-AC">Non-AC</option>
+                                <option value="Volvo">Volvo</option>
+                                <option value="Mini">Mini</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="searchBuses()">
+                        <i class="fas fa-search"></i> Search Buses
+                    </button>
+                </div>
+
+                <!-- Search Results -->
+                <div id="search-results" class="card" style="display: none;">
+                    <div class="card-header">
+                        <h3 class="card-title">Available Buses</h3>
+                    </div>
+                    <div id="buses-list"></div>
+                </div>
+            </div>
+
+            <!-- Bookings Section -->
+            <div id="bookings-section" class="section" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">My Bookings</h2>
+                    </div>
+                    <div id="bookings-list">
+                        <div class="spinner" style="display: block; margin: 40px auto;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Profile Section -->
+            <div id="profile-section" class="section" style="display: none;">
+                <div class="card">
+                    <div class="card-header">
+                        <h2 class="card-title">Profile Information</h2>
+                    </div>
+                    
+                    <div class="grid grid-2">
+                        <div class="form-group">
+                            <label for="profileName">Full Name</label>
+                            <input type="text" id="profileName" readonly>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="profileEmail">Email</label>
+                            <input type="email" id="profileEmail" readonly>
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="profilePhone">Phone</label>
+                            <input type="tel" id="profilePhone">
+                        </div>
+                        
+                        <div class="form-group">
+                            <label for="profileJoined">Member Since</label>
+                            <input type="text" id="profileJoined" readonly>
+                        </div>
+                    </div>
+                    
+                    <button class="btn btn-primary" onclick="updateProfile()">
+                        <i class="fas fa-save"></i> Update Profile
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/config/firebase.js"></script>
+    <script src="../js/utils/helpers.js"></script>
+    <script src="../js/modules/auth.js"></script>
+    <script src="../js/modules/user.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            checkAuth();
+            initializeUserDashboard();
+            setMinDate();
+        });
+
+        function checkAuth() {
+            if (!AuthModule.getCurrentUser()) {
+                window.location.href = 'login.html';
+            }
+        }
+
+        function setMinDate() {
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('travelDate').setAttribute('min', today);
+            document.getElementById('travelDate').value = today;
+        }
+
+        function showSection(sectionName) {
+            // Hide all sections
+            const sections = document.querySelectorAll('.section');
+            sections.forEach(section => section.style.display = 'none');
+            
+            // Show selected section
+            document.getElementById(sectionName + '-section').style.display = 'block';
+            
+            // Update nav active state
+            const navLinks = document.querySelectorAll('.dashboard-nav a');
+            navLinks.forEach(link => link.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Load data based on section
+            if (sectionName === 'bookings') {
+                loadUserBookings();
+            }
+        }
+
+        async function searchBuses() {
+            const from = document.getElementById('fromLocation').value;
+            const to = document.getElementById('toLocation').value;
+            const date = document.getElementById('travelDate').value;
+            const type = document.getElementById('busType').value;
+
+            if (!from || !to) {
+                showAlert('Please enter both source and destination', 'warning');
+                return;
+            }
+
+            try {
+                const results = await UserModule.searchBuses({
+                    from: from.toLowerCase(),
+                    to: to.toLowerCase(),
+                    date,
+                    type
+                });
+
+                displaySearchResults(results);
+            } catch (error) {
+                console.error('Search error:', error);
+                showAlert('Error searching buses: ' + error.message, 'error');
+            }
+        }
+
+        function displaySearchResults(buses) {
+            const resultsContainer = document.getElementById('search-results');
+            const busesList = document.getElementById('buses-list');
+            
+            if (buses.length === 0) {
+                busesList.innerHTML = `
+                    <p style="text-align: center; color: var(--gray-500); padding: 40px;">
+                        No buses found for your search criteria. Try different locations or dates.
+                    </p>
+                `;
+            } else {
+                busesList.innerHTML = buses.map(bus => `
+                    <div class="card" style="margin-bottom: 16px;">
+                        <div style="display: flex; justify-content: space-between; align-items: center;">
+                            <div>
+                                <h4 style="margin-bottom: 8px; color: var(--gray-900);">${bus.busNumber} - ${bus.operatorName}</h4>
+                                <p style="color: var(--gray-600); margin-bottom: 4px;">
+                                    <i class="fas fa-route"></i> ${bus.route}
+                                </p>
+                                <p style="color: var(--gray-600); margin-bottom: 4px;">
+                                    <i class="fas fa-clock"></i> ${bus.departureTime} - ${bus.arrivalTime}
+                                </p>
+                                <p style="color: var(--gray-600);">
+                                    <i class="fas fa-bus"></i> ${bus.busType} | 
+                                    <i class="fas fa-phone"></i> ${bus.contactNumber}
+                                </p>
+                            </div>
+                            <div style="text-align: right;">
+                                <div class="badge badge-success" style="margin-bottom: 8px;">₹${bus.fare}</div>
+                                <br>
+                                <div style="display: flex; gap: 8px; flex-direction: column;">
+                                    <button class="btn btn-primary btn-sm" onclick="bookBus('${bus.id}', '${bus.busNumber}', ${bus.fare})">
+                                        <i class="fas fa-ticket-alt"></i> Book Now
+                                    </button>
+                                    <button class="btn btn-secondary btn-sm" onclick="trackBus('${bus.id}', '${bus.busNumber}')">
+                                        <i class="fas fa-map-marker-alt"></i> Track Live
+                                    </button>
+                                </div>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `).join('');
+            }
+            
+            resultsContainer.style.display = 'block';
+        }
+
+        async function bookBus(busId, busNumber, fare) {
+            try {
+                // Show booking confirmation dialog
+                const confirmed = confirm(`Book ${busNumber} for ₹${fare}?\n\nThis will create a booking confirmation.`);
+                if (!confirmed) return;
+                
+                const bookingData = {
+                    busNumber,
+                    fare,
+                    travelDate: document.getElementById('travelDate').value,
+                    from: document.getElementById('fromLocation').value,
+                    to: document.getElementById('toLocation').value,
+                    passengerName: (await UserModule.getUserData(AuthModule.getCurrentUser().uid))?.fullName || 'Passenger',
+                    bookingTime: new Date().toISOString()
+                };
+                
+                const booking = await UserModule.bookBus(busId, bookingData);
+                showAlert(`Booking confirmed! Booking ID: ${booking.id.substring(0, 8).toUpperCase()}`, 'success');
+                
+                // Refresh bookings if on bookings section
+                if (document.getElementById('bookings-section').style.display !== 'none') {
+                    await loadUserBookings();
+                }
+                
+            } catch (error) {
+                console.error('Booking error:', error);
+                showAlert('Booking failed: ' + error.message, 'error');
+            }
+        }
+
+        async function trackBus(busId, busNumber) {
+            try {
+                showAlert('Getting live location...', 'info');
+                const location = await UserModule.getBusLocation(busId);
+                if (location) {
+                    const locationInfo = `
+                        <strong>${busNumber} Live Location:</strong><br>
+                        📍 ${location.address || 'Coordinates: ' + location.latitude + ', ' + location.longitude}<br>
+                        🕒 Last updated: ${new Date(location.lastUpdated).toLocaleTimeString()}
+                    `;
+                    showLocationModal(busNumber, location, locationInfo);
+                } else {
+                    showAlert('Bus location not available. Driver may not have updated location yet.', 'warning');
+                }
+            } catch (error) {
+                console.error('Tracking error:', error);
+                showAlert('Error tracking bus: ' + error.message, 'error');
+            }
+        }
+
+        async function loadUserBookings() {
+            try {
+                const bookings = await UserModule.getUserBookings();
+                displayBookings(bookings);
+            } catch (error) {
+                console.error('Error loading bookings:', error);
+                document.getElementById('bookings-list').innerHTML = `
+                    <p style="text-align: center; color: var(--error); padding: 40px;">
+                        Error loading bookings: ${error.message}
+                    </p>
+                `;
+            }
+        }
+
+        function displayBookings(bookings) {
+            const container = document.getElementById('bookings-list');
+            
+            if (bookings.length === 0) {
+                container.innerHTML = `
+                    <p style="text-align: center; color: var(--gray-500); padding: 40px;">
+                        No bookings found. <a href="#" onclick="showSection('search')" style="color: var(--primary);">Search for buses</a>
+                    </p>
+                `;
+                return;
+            }
+            
+            container.innerHTML = bookings.map(booking => `
+                <div class="card" style="margin-bottom: 16px;">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 8px;">
+                                <h4 style="color: var(--gray-900); margin: 0;">${booking.busNumber}</h4>
+                                <span class="badge badge-${booking.status === 'confirmed' ? 'success' : booking.status === 'cancelled' ? 'error' : 'warning'}">
+                                    ${booking.status.toUpperCase()}
+                                </span>
+                            </div>
+                            <p style="color: var(--gray-600); margin-bottom: 4px;">
+                                <i class="fas fa-route"></i> ${booking.from} → ${booking.to}
+                            </p>
+                            <p style="color: var(--gray-600); margin-bottom: 4px;">
+                                <i class="fas fa-calendar"></i> ${new Date(booking.travelDate).toLocaleDateString()}
+                            </p>
+                            <p style="color: var(--gray-600); margin-bottom: 4px;">
+                                <i class="fas fa-user"></i> ${booking.passengerName}
+                            </p>
+                            <p style="color: var(--gray-500); font-size: 12px;">
+                                Booking ID: ${booking.id.substring(0, 8).toUpperCase()} | 
+                                Booked: ${new Date(booking.bookingDate).toLocaleDateString()}
+                            </p>
+                        </div>
+                        <div style="text-align: right;">
+                            <div style="font-size: 18px; font-weight: 600; color: var(--primary); margin-bottom: 8px;">
+                                ₹${booking.fare}
+                            </div>
+                            <div style="display: flex; gap: 8px; flex-direction: column;">
+                                ${booking.status === 'confirmed' ? `
+                                    <button class="btn btn-sm btn-secondary" onclick="trackBus('${booking.busId}', '${booking.busNumber}')">
+                                        <i class="fas fa-map-marker-alt"></i> Track
+                                    </button>
+                                    <button class="btn btn-sm" onclick="cancelBooking('${booking.id}')" 
+                                            style="background: var(--error); color: white;">
+                                        <i class="fas fa-times"></i> Cancel
+                                    </button>
+                                ` : ''}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        async function cancelBooking(bookingId) {
+            if (confirm('Are you sure you want to cancel this booking?')) {
+                try {
+                    await UserModule.cancelBooking(bookingId);
+                    showAlert('Booking cancelled successfully!', 'success');
+                    await loadUserBookings();
+                } catch (error) {
+                    console.error('Cancel booking error:', error);
+                    showAlert('Error cancelling booking: ' + error.message, 'error');
+                }
+            }
+        }
+
+        function showLocationModal(busNumber, location, locationInfo) {
+            // Create modal overlay
+            const modal = document.createElement('div');
+            modal.style.cssText = `
+                position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+                background: rgba(0,0,0,0.5); z-index: 1000; display: flex; 
+                align-items: center; justify-content: center; padding: 20px;
+            `;
+            
+            modal.innerHTML = `
+                <div style="background: white; border-radius: 12px; padding: 24px; max-width: 500px; width: 100%;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px;">
+                        <h3 style="margin: 0; color: var(--gray-900);">
+                            <i class="fas fa-map-marker-alt" style="color: var(--primary);"></i> 
+                            Live Bus Tracking
+                        </h3>
+                        <button onclick="this.closest('.modal-overlay').remove()" 
+                                style="background: none; border: none; font-size: 24px; cursor: pointer; color: var(--gray-500);">
+                            ×
+                        </button>
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        ${locationInfo}
+                    </div>
+                    <div style="background: var(--gray-50); padding: 16px; border-radius: 8px; margin-bottom: 20px;">
+                        <p style="margin: 0; font-size: 14px; color: var(--gray-600);">
+                            <strong>Coordinates:</strong> ${location.latitude}, ${location.longitude}<br>
+                            <strong>Accuracy:</strong> GPS Location<br>
+                            <strong>Status:</strong> <span style="color: var(--success);">● Live</span>
+                        </p>
+                    </div>
+                    <div style="display: flex; gap: 12px;">
+                        <button class="btn btn-primary" onclick="openInMaps(${location.latitude}, ${location.longitude})">
+                            <i class="fas fa-external-link-alt"></i> Open in Maps
+                        </button>
+                        <button class="btn btn-secondary" onclick="refreshLocation('${busNumber}', '${location.busId || 'demo'}')">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            modal.className = 'modal-overlay';
+            document.body.appendChild(modal);
+        }
+
+        function openInMaps(lat, lng) {
+            const url = `https://www.google.com/maps?q=${lat},${lng}`;
+            window.open(url, '_blank');
+        }
+
+        async function refreshLocation(busNumber, busId) {
+            try {
+                showAlert('Refreshing location...', 'info');
+                const location = await UserModule.getBusLocation(busId);
+                if (location) {
+                    // Update the modal content
+                    const locationInfo = `
+                        <strong>${busNumber} Live Location:</strong><br>
+                        📍 ${location.address || 'Coordinates: ' + location.latitude + ', ' + location.longitude}<br>
+                        🕒 Last updated: ${new Date(location.lastUpdated).toLocaleTimeString()}
+                    `;
+                    document.querySelector('.modal-overlay div div:nth-child(2)').innerHTML = locationInfo;
+                    showAlert('Location updated!', 'success');
+                } else {
+                    showAlert('Unable to refresh location', 'warning');
+                }
+            } catch (error) {
+                showAlert('Error refreshing location', 'error');
+            }
+        }
+
+        async function updateProfile() {
+            const phone = document.getElementById('profilePhone').value;
+            
+            try {
+                await UserModule.updateProfile({ phone });
+                showAlert('Profile updated successfully!', 'success');
+            } catch (error) {
+                console.error('Profile update error:', error);
+                showAlert('Error updating profile: ' + error.message, 'error');
+            }
+        }
+
+        function logout() {
+            AuthModule.logout();
+            window.location.href = '../index.html';
+        }
+
+        async function initializeUserDashboard() {
+            try {
+                const user = AuthModule.getCurrentUser();
+                if (user) {
+                    const userData = await UserModule.getUserData(user.uid);
+                    if (userData) {
+                        document.getElementById('profileName').value = userData.fullName || '';
+                        document.getElementById('profileEmail').value = userData.email || user.email;
+                        document.getElementById('profilePhone').value = userData.phone || '';
+                        document.getElementById('profileJoined').value = new Date(userData.createdAt).toLocaleDateString();
+                    }
+                }
+            } catch (error) {
+                console.error('Dashboard initialization error:', error);
+            }
+        }
+    </script>
+</body>
+</html>

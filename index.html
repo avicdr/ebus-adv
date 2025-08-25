@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>eBus Management System</title>
+    <link rel="stylesheet" href="css/main.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="hero-container">
+        <nav class="navbar">
+            <div class="nav-brand">
+                <i class="fas fa-bus"></i>
+                <span>eBus</span>
+            </div>
+            <div class="nav-links">
+                <a href="#about">About</a>
+                <a href="#features">Features</a>
+                <a href="#contact">Contact</a>
+            </div>
+        </nav>
+
+        <main class="hero-content">
+            <div class="hero-text">
+                <h1>Smart Bus Management System</h1>
+                <p>Track, manage, and book bus services with real-time location updates</p>
+                <div class="cta-buttons">
+                    <a href="user/login.html" class="btn btn-primary">
+                        <i class="fas fa-user"></i> User Login
+                    </a>
+                    <a href="driver/login.html" class="btn btn-secondary">
+                        <i class="fas fa-steering-wheel"></i> Driver Login
+                    </a>
+                    <a href="admin/login.html" class="btn btn-accent">
+                        <i class="fas fa-cog"></i> Admin Login
+                    </a>
+                </div>
+            </div>
+            <div class="hero-image">
+                <div class="bus-animation">
+                    <i class="fas fa-bus"></i>
+                </div>
+            </div>
+        </main>
+
+        <section class="features-preview" id="features">
+            <div class="container">
+                <h2>Key Features</h2>
+                <div class="features-grid">
+                    <div class="feature-card">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <h3>Real-time Tracking</h3>
+                        <p>Track bus locations in real-time with GPS integration</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-search"></i>
+                        <h3>Smart Search</h3>
+                        <p>Find buses by route, destination, and timing</p>
+                    </div>
+                    <div class="feature-card">
+                        <i class="fas fa-users"></i>
+                        <h3>Multi-role Access</h3>
+                        <p>Separate dashboards for admins, drivers, and users</p>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <script src="js/config/firebase.js"></script>
+    <script src="js/utils/helpers.js"></script>
+</body>
+</html>

@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Login - eBus</title>
+    <link rel="stylesheet" href="../css/main.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+</head>
+<body>
+    <div class="form-container">
+        <div class="form-card">
+            <div class="form-header">
+                <div class="nav-brand" style="justify-content: center; margin-bottom: 24px;">
+                    <i class="fas fa-bus" style="color: var(--primary);"></i>
+                    <span style="color: var(--gray-900);">eBus</span>
+                </div>
+                <h1>User Login</h1>
+                <p>Sign in to search and track buses</p>
+            </div>
+
+            <div id="alert-container"></div>
+
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="email">Email Address</label>
+                    <input type="email" id="email" name="email" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">Password</label>
+                    <input type="password" id="password" name="password" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary" style="width: 100%; margin-bottom: 16px;">
+                    <span class="btn-text">Sign In</span>
+                    <span class="spinner" style="display: none;"></span>
+                </button>
+            </form>
+
+            <div style="text-align: center; margin-top: 24px;">
+                <p style="color: var(--gray-600);">
+                    Don't have an account? 
+                    <a href="register.html" style="color: var(--primary); text-decoration: none; font-weight: 600;">Sign up</a>
+                </p>
+                <p style="margin-top: 16px;">
+                    <a href="../index.html" style="color: var(--gray-500); text-decoration: none;">
+                        <i class="fas fa-arrow-left"></i> Back to Home
+                    </a>
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script src="../js/config/firebase.js"></script>
+    <script src="../js/utils/helpers.js"></script>
+    <script src="../js/modules/auth.js"></script>
+    <script>
+        // Initialize user login
+        document.addEventListener('DOMContentLoaded', function() {
+            const form = document.getElementById('loginForm');
+            
+            form.addEventListener('submit', async function(e) {
+                e.preventDefault();
+                
+                const submitBtn = form.querySelector('button[type="submit"]');
+                const btnText = submitBtn.querySelector('.btn-text');
+                const spinner = submitBtn.querySelector('.spinner');
+                
+                try {
+                    // Show loading state
+                    btnText.style.display = 'none';
+                    spinner.style.display = 'inline-block';
+                    submitBtn.disabled = true;
+                    
+                    const email = document.getElementById('email').value;
+                    const password = document.getElementById('password').value;
+                    
+                    await AuthModule.loginUser(email, password);
+                    
+                    // Redirect to user dashboard
+                    window.location.href = 'dashboard.html';
+                    
+                } catch (error) {
+                    console.error('Login error:', error);
+                    showAlert('Login failed: ' + error.message, 'error');
+                } finally {
+                    // Reset button state
+                    btnText.style.display = 'inline';
+                    spinner.style.display = 'none';
+                    submitBtn.disabled = false;
+                }
+            });
+        });
+    </script>
+</body>
+</html>
